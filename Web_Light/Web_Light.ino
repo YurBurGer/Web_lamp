@@ -31,11 +31,11 @@ WebServer webserver(PREFIX, 80);
 
 //#define DEBUG
 
-byte val = 0;            //integer for darkness level
+unsigned long int val = 0;            //integer for darkness level
 byte l1 = 1,l2 = 127,l3 = 191,l4=255;
-byte off_delay = 20; //interval for on in seconds
+unsigned long int off_delay = 600; //interval for on in seconds
 unsigned long prev=0,cur=0;
-byte prevval=val;
+unsigned long int prevval=val;
 /* This command is set as the default command for the server.  It
  * handles both GET and POST requests.  For a GET, it returns a simple
  * page with some buttons.  For a POST, it saves the value posted to
@@ -234,10 +234,25 @@ void setup()
   
   //Open serial
   Serial.begin(115200);
-
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  
+  //while (!Serial) {
+  //  ; // wait for serial port to connect. Needed for native USB port only
+  //}
+  
+  Serial.print("light levels from config");
+  Serial.print(" l1=");
+  Serial.print((l1*100)/255);
+  Serial.print("% l2=");
+  Serial.print((l2*100)/255);
+  Serial.print("% l3=");
+  Serial.print((l3*100)/255);
+  Serial.print("% l4=");
+  Serial.print((l4*100)/255);
+  Serial.print("% Delay");
+  Serial.print(off_delay);
+  Serial.print("s ");
+  
+  
   
   // setup the Ehternet library to talk to the Wiznet board
   if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0) {
