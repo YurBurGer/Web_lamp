@@ -70,17 +70,37 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     "$(document).ready(function(){ $('.btn2').click( function(){$.post('/', { val: \"2\" } ); }); });"
     "$(document).ready(function(){ $('.btn3').click( function(){$.post('/', { val: \"3\" } ); }); });"
     "$(document).ready(function(){ $('.btn4').click( function(){$.post('/', { val: \"4\" } ); }); });"
-    "$(document).ready(function(){ $('.cfg').click( function(){$(location).attr('href','/cfg'); }); });"
+    "$(document).ready(function(){ $('.btn5').click( function(){$(location).attr('href','/cfg'); }); });"
   "</script>"
 "</head>"
-"<body>";
+"<body>"
+"<table width=100%><tr><td width=15% align=center>"
+    "<button type=\"button\" class=\"btn0\" style='font-size:200%;height:100px;width:100px\'>L0</button>"
+  "</td>"
+  "<td width=15% align=center>"
+  "<button type=\"button\" class=\"btn1\" style='font-size:200%;height:100px;width:100px\'>L1</button>"
+  "</td>"
+  "<td width=15% align=center>"
+  "<button type=\"button\" class=\"btn2\" style='font-size:200%;height:100px;width:100px\'>L2</button>"
+  "</td>"
+  "<td width=15% align=center>"
+  "<button type=\"button\" class=\"btn3\" style='font-size:200%;height:100px;width:100px\'>L3</button>"
+  "</td>"
+  "<td width=15% align=center>"
+  "<button type=\"button\" class=\"btn4\" style='font-size:200%;height:100px;width:100px\'>L4</button>"
+  "</td>"
+  "<td width=15% align=center>"
+  "<button type=\"button\" class=\"btn5\" style='font-size:200%;height:100px;width:100px\'>cfg</button>"
+  "</td>"
+"</tr>";
+
   server.printP(message);
-  server.print("<table width=100% border=1><tr>"); 
-  for (short int i=0;i<=4;i++)
+//  server.print("<table width=100% border=1><tr height=100>"); 
+ /* for (short int i=0;i<=5;i++)
   {
-  server.print("<td width=15% align=center><button type=\"button\" class=btn");server.print(i); server.print("style=\'font-size:200%;height:100px;width:100px\'>");server.print((100*l[i])/255);server.print("</button></td>");
-  }
-  server.print("</tr>");
+  server.print("<td width=15% align=center><button type=\"button\" class=btn");server.print(i); server.print("style= \' font-size:200%;height:100px;width:100px \' >");server.print((100*l[i])/255);server.print("</button></td>");
+  }*/
+  server.print("<tr>");
   for (short int i=0;i<=4;i++)
   {
   server.print("<td align=center width=15%>");
@@ -95,9 +115,9 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   server.print("<td align=center width=20%>");
   server.print(" Delay");
   server.print("=");
-  server.print(l[6]);
+  server.print(l[5]);
   server.println("s ");
-  server.print("</td>");
+  server.print("</td></tr>");
   server.print("</table>");
   server.print("</body></html>");
   }
@@ -245,6 +265,8 @@ void loop()
     prev=millis();
     cur=millis();
     prevval=val;
+    Serial.print("New Value val=");
+    Serial.println(val);
   }
 //------------------- If Remembered state - check timeout delay  
   else{
