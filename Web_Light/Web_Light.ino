@@ -28,7 +28,7 @@ unsigned long int prevval=val;
 unsigned int l[6]= {0,0,0,0,255,600}; //val,l1,l2,l3,l4,off_delay
 
 unsigned int off_delay = 600; //interval for on in seconds
-unsigned long int prev=0,cur=0; //timestamps
+unsigned long int prev=0,cur=0,period=0; //timestamps
 
 //-----------------------------------------------------------------------------------------------------------
 void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
@@ -36,48 +36,53 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   if (type == WebServer::POST)
   {
     bool repeat;
-    char p_name[16], value[16];
-//------------------------Eeprom update config-----------------------
-   do
-    {  repeat = server.readPOSTparam(p_name, 16, value, 16);
-       if(strcmp(value, "") != 0)
-       {
-       if (strcmp(p_name, "l0") == 0)
-          {
+    char name[16], value[16];
+    do
+    {
+      /* readPOSTparam returns false when there are no more parameters
+       * to read from the input.  We pass in buffers for it to store
+       * the name and value strings along with the length of those
+       * buffers. */
+      repeat = server.readPOSTparam(name, 16, value, 16);
+
+      /* this is a standard string comparison function.  It returns 0
+       * when there's an exact match.  We're looking for a parameter
+       * named red/green/blue here. */
+      if(strcmp(value, "") != 0){
+        if (strcmp(name, "val") == 0)
+        {
           val = strtoul(value, NULL, 10);
-          l[0]=val;
-          }
-       if (strcmp(p_name, "l1") == 0)
-          {
+        }
+        if (strcmp(name, "l1") == 0)
+        {
           int var=strtoul(value, NULL, 10);
           l[1] = constrain(255*var/100,MIN,255);
         //  EEPROM.update(L1ADDR, l[1]);
-          }
-       if (strcmp(p_name, "l2") == 0)
-          {
+        }
+        if (strcmp(name, "l2") == 0)
+        {
           int var=strtoul(value, NULL, 10);
           l[2] = constrain(255*var/100,l[1],255);
-      //    EEPROM.update(L2ADDR, l[2]);
-          }
-       if (strcmp(p_name, "l3") == 0)
-          {
+         // EEPROM.update(L2ADDR, l2);
+        }
+        if (strcmp(name, "l3") == 0)
+        {
           int var=strtoul(value, NULL, 10);
           l[3] = constrain(255*var/100,l[2],255);
-       //   EEPROM.update(L3ADDR, l[3]);
-          }
-        if (strcmp(p_name, "l4") == 0)
-          {
+        //  EEPROM.update(L3ADDR, l3);
+        }
+        if (strcmp(name, "l4") == 0)
+        {
           int var=strtoul(value, NULL, 10);
           l[4] = constrain(255*var/100,l[3],255);
-       //   EEPROM.update(L4ADDR, l[4]);
-          }
-        if (strcmp(p_name, "del") == 0)
-          {
-          off_delay = strtoul(value, NULL, 10);
-          l[5]=off_delay;
-      //    EEPROM.update(DELADDR, off_delay);
-          }
+         // EEPROM.update(L4ADDR, l4);
         }
+        if (strcmp(name, "del") == 0)
+        {
+          off_delay = strtoul(value, NULL, 10);
+        //  EEPROM.update(DELADDR, off_delay);
+        }
+      }
     } while (repeat);
  /*unsigned short i=0;
  Serial.println("Eeprom config upgrade");
@@ -293,9 +298,17 @@ void loop()
 //-------------------Log light start with parameters if it starts
   if ((val!=prevval)&&(val!=0))
     { 
+      
+      period=off_delay*1000;
      Serial.print("Turning light on for ");
      Serial.print(off_delay);
-     Serial.println("s ");
+     Serial.print("s ");
+     Serial.print(" (");
+     Serial.print(period);
+     Serial.println("ms)");
+
+
+     
      }
 //------------------- Remember Current State     
   if(val!=prevval){
@@ -305,7 +318,10 @@ void loop()
   }
 //------------------- If Remembered state - check timeout delay  
   else{
-    if((val!=0)&&((cur-prev)>=(off_delay*1000))){
+    
+    if((val!=0)&&(period>(off_delay*1000))){
+      Serial.print("Timeout light off:");
+      Serial.println(off_delay*1000);
       val=0;
       prevval=val;
       prev=millis();
