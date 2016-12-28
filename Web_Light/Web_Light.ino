@@ -32,74 +32,25 @@ unsigned long int prev=0,cur=0,period=0; //timestamps
 
 //-----------------------------------------------------------------------------------------------------------
 void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
-{
-  if (type == WebServer::POST)
   {
+  if (type == WebServer::POST)
+    {
     bool repeat;
     char name[16], value[16];
     do
-    {
-      /* readPOSTparam returns false when there are no more parameters
-       * to read from the input.  We pass in buffers for it to store
-       * the name and value strings along with the length of those
-       * buffers. */
+      {
       repeat = server.readPOSTparam(name, 16, value, 16);
-
-      /* this is a standard string comparison function.  It returns 0
-       * when there's an exact match.  We're looking for a parameter
-       * named red/green/blue here. */
-      if(strcmp(value, "") != 0){
+      if(strcmp(value, "") != 0)
+        {
         if (strcmp(name, "val") == 0)
-        {
+          {
           val = strtoul(value, NULL, 10);
+          }
         }
-        if (strcmp(name, "l1") == 0)
-        {
-          int var=strtoul(value, NULL, 10);
-          l[1] = constrain(255*var/100,MIN,255);
-        //  EEPROM.update(L1ADDR, l[1]);
-        }
-        if (strcmp(name, "l2") == 0)
-        {
-          int var=strtoul(value, NULL, 10);
-          l[2] = constrain(255*var/100,l[1],255);
-         // EEPROM.update(L2ADDR, l2);
-        }
-        if (strcmp(name, "l3") == 0)
-        {
-          int var=strtoul(value, NULL, 10);
-          l[3] = constrain(255*var/100,l[2],255);
-        //  EEPROM.update(L3ADDR, l3);
-        }
-        if (strcmp(name, "l4") == 0)
-        {
-          int var=strtoul(value, NULL, 10);
-          l[4] = constrain(255*var/100,l[3],255);
-         // EEPROM.update(L4ADDR, l4);
-        }
-        if (strcmp(name, "del") == 0)
-        {
-          off_delay = strtoul(value, NULL, 10);
-        //  EEPROM.update(DELADDR, off_delay);
-        }
-      }
-    } while (repeat);
- /*unsigned short i=0;
- Serial.println("Eeprom config upgrade");
-      do{
-      Serial.print("l");
-      Serial.print(i);
-      Serial.print("=");
-      Serial.print((100*l[i])/255);
-      Serial.print("");
-      
-      i++;
-      }while(i<6);
-      Serial.println();*/
-      
+      } while (repeat);
       server.httpSeeOther(PREFIX);
     return;
-  }
+    }
   server.httpSuccess();
   
 //-----------------------------web push button-------------------  
@@ -114,7 +65,7 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   "<script>"
   
 //custom functions    
-    "$(document).ready(function(){ $('.off').click( function(){$.post('/', { val: \"0\" } ); }); });"
+    "$(document).ready(function(){ $('.btn0').click( function(){$.post('/', { val: \"0\" } ); }); });"
     "$(document).ready(function(){ $('.btn1').click( function(){$.post('/', { val: \"1\" } ); }); });"
     "$(document).ready(function(){ $('.btn2').click( function(){$.post('/', { val: \"2\" } ); }); });"
     "$(document).ready(function(){ $('.btn3').click( function(){$.post('/', { val: \"3\" } ); }); });"
@@ -122,41 +73,18 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     "$(document).ready(function(){ $('.cfg').click( function(){$(location).attr('href','/cfg'); }); });"
   "</script>"
 "</head>"
-"<body>"
-  "<table><tr>"
-  "<td width=15% align=center>"
-    "<button type=\"button\" class=\"off\" style='font-size:200%;height:100px;width:100px\'>0%</button>"
-  "</td>"
-  "<td width=15% align=center>"
-  "<button type=\"button\" class=\"btn1\" style='font-size:200%;height:100px;width:100px\'>25%</button>"
-  "</td>"
-  "<td width=15% align=center>"
-  "<button type=\"button\" class=\"btn2\" style='font-size:200%;height:100px;width:100px\'>50%</button>"
-  "</td>"
-  "<td width=15% align=center>"
-  "<button type=\"button\" class=\"btn3\" style='font-size:200%;height:100px;width:100px\'>75%</button>"
-  "</td>"
-  "<td width=15% align=center>"
-  "<button type=\"button\" class=\"btn4\" style='font-size:200%;height:100px;width:100px\'>100%</button>"
-  "</td>"
-  "<td width=15% align=center>"
-  "<button type=\"button\" class=\"cfg\" style='font-size:200%;height:100px;width:100px\'>cfg</button>"
-  "</td></tr></table>";
+"<body>";
   server.printP(message);
-  //l[0]=val;
-  server.print("<table><tr><td align=center width=50%>current level=");
-  server.print((100*l[0])/255);
-  server.print("</td><td width=50% align=center> timeout=");
-  server.println(l[5]);
-  server.print("</td><tr></table>");
-  
-  
-  server.print("<table width=100% border=1><tr>");
-  server.print("Light levels from config: ");
-  for (short int i=1;i<=4;i++)
+  server.print("<table width=100% border=1><tr>"); 
+  for (short int i=0;i<=4;i++)
   {
-  server.print("<td align=center width=20%>");
-  server.print("l");
+  server.print("<td width=15% align=center><button type=\"button\" class=btn");server.print(i); server.print("style=\'font-size:200%;height:100px;width:100px\'>");server.print((100*l[i])/255);server.print("</button></td>");
+  }
+  server.print("</tr>");
+  for (short int i=0;i<=4;i++)
+  {
+  server.print("<td align=center width=15%>");
+  server.print("L");
   server.print(i);
   server.print("=");
   server.print((l[i]*100)/255);
@@ -173,6 +101,8 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   server.print("</table>");
   server.print("</body></html>");
   }
+  
+  
 }
 //--------------------------Configuration page---------------------------------------------------------------------------------
 void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
