@@ -245,13 +245,15 @@ void loop()
     { 
      Serial.print("Turning light on for ");
      Serial.print(off_delay);
-     Serial.print("s ");
+     Serial.println("s ");
      }
+//------------------- Remember Current State     
   if(val!=prevval){
     prev=millis();
     cur=millis();
     prevval=val;
   }
+//------------------- If Remembered state - check timeout delay  
   else{
     if((val!=0)&&((cur-prev)>=(off_delay*1000))){
       val=0;
@@ -286,13 +288,14 @@ void loop()
 }
 
 void printIPAddress()
-{
+  {
   Serial.print("My IP address: ");
-  for (byte thisByte = 0; thisByte < 4; thisByte++) {
+  for (byte thisByte = 0; thisByte < 4; thisByte++) 
+    {
     // print the value of each byte of the IP address:
     Serial.print(Ethernet.localIP()[thisByte], DEC);
     Serial.print(".");
-  }
+    }
 
   Serial.println();
-}
+  }
