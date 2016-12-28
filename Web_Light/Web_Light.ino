@@ -153,13 +153,21 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   {
     
   if (type == WebServer::POST)
-    {
+    {Serial.println("Config update");
     bool repeat;
-    char name[16], value[16];
+    char p_name[16],value[16];
     do
       {
-      repeat = server.readPOSTparam(name, 16, value, 16);
-      if (strcmp(name, "val") == 0)
+      repeat = server.readPOSTparam(p_name, 16, value, 16);
+      unsigned short i=0;
+      do{
+      Serial.print(p_name[i]);i++;}while(p_name[i]);
+      Serial.print("=");
+      i=0;
+      do{Serial.print(value[i]);i++;}while(value[i]);
+      Serial.println();
+      
+      if (strcmp(p_name, "val") == 0)
         {
         val = strtoul(value, NULL, 10);
         }
@@ -171,12 +179,12 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   
   if (type == WebServer::GET)
     {
-    server.print("<!DOCTYPE html><html><head><title>Light control config</title></head><body><form action= method=post>");
+    server.print("<!DOCTYPE html><html><head><title>Light control config</title></head><body><form action=\\cfg method=post>");
     server.print("delay:<input type=text name=del value=");server.print(l[5]);server.print(" ><br>");
     for(unsigned short int i=1;i<=4;i++){
     server.print("l");server.print(i);server.print(":<input type=text name=l");server.print(i);server.print(" value=");server.print((l[i]*100)/255);server.print(">%<br>");
     }
-    server.print("<input type=submit value=Set>");
+    server.print("<input type=submit value=set>");
     server.print("</form></body></html>");
     }
   }
