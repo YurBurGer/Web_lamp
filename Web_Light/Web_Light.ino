@@ -35,10 +35,10 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 {
   if (type == WebServer::POST)
   {
- //   bool repeat;
- //   char p_name[16], value[16];
+    bool repeat;
+    char p_name[16], value[16];
 //------------------------Eeprom update config-----------------------
-   /* do
+   do
     {  repeat = server.readPOSTparam(p_name, 16, value, 16);
        if(strcmp(value, "") != 0)
        {
@@ -78,7 +78,7 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
           EEPROM.update(DELADDR, off_delay);
           }
         }
-    } while (repeat);*/
+    } while (repeat);
  /*unsigned short i=0;
  Serial.println("Eeprom config upgrade");
       do{
