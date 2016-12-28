@@ -1,20 +1,14 @@
-/* Web_AjaxRGB.pde - example sketch for Webduino library */
-
 #include "SPI.h"
 #include "Ethernet.h"
 #include "WebServer.h"
 #include <EEPROM.h>
 
-// CHANGE THIS TO YOUR OWN UNIQUE VALUE
 static uint8_t mac[6] = { 0x02, 0xAA, 0xBB, 0xCC, 0x00, 0x22 };
 IPAddress ip(192, 168, 80, 5);
 IPAddress myDns(192, 168, 80, 1);
 IPAddress gateway(192, 168, 80, 1);
 IPAddress subnet(255, 255, 0, 0);
 
-/* all URLs on this server will start with /ctrl because of how we
- * define the PREFIX value.  We also will listen on port 80, the
- * standard HTTP service port */
 #define PREFIX ""
 #define MIN 1
 #define DHCPREQ 30000 //ms delay
@@ -29,17 +23,12 @@ IPAddress subnet(255, 255, 0, 0);
 
 WebServer webserver(PREFIX, 80);
 
-//#define DEBUG
-
-unsigned long int val = 0;            //integer for darkness level
+unsigned long int val = 0;            //integer for brightness level
 byte l1 = 1,l2 = 127,l3 = 191,l4=255;
-unsigned long int off_delay = 600; //interval for on in seconds
-unsigned long prev=0,cur=0;
+unsigned int off_delay = 600; //interval for on in seconds
+unsigned long int prev=0,cur=0;
 unsigned long int prevval=val;
-/* This command is set as the default command for the server.  It
- * handles both GET and POST requests.  For a GET, it returns a simple
- * page with some buttons.  For a POST, it saves the value posted to
- * the variables, affecting the output*/
+//-----------------------------------------------------------------------------------------------------------
 void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 {
   if (type == WebServer::POST)
@@ -47,66 +36,48 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     bool repeat;
     char name[16], value[16];
     do
-    {
-      /* readPOSTparam returns false when there are no more parameters
-       * to read from the input.  We pass in buffers for it to store
-       * the name and value strings along with the length of those
-       * buffers. */
-      repeat = server.readPOSTparam(name, 16, value, 16);
-
-      /* this is a standard string comparison function.  It returns 0
-       * when there's an exact match.  We're looking for a parameter
-       * named red/green/blue here. */
-      if(strcmp(value, "") != 0){
-        if (strcmp(name, "val") == 0)
-        {
-        	/* use the STRing TO Unsigned Long function to turn the string
-        	 * version of the color strength value into our integer red/green/blue
-        	 * variable */
+    {  repeat = server.readPOSTparam(name, 16, value, 16);
+       if(strcmp(value, "") != 0)
+       {
+       if (strcmp(name, "val") == 0)
+          {
           val = strtoul(value, NULL, 10);
-        }
-        if (strcmp(name, "l1") == 0)
-        {
+          }
+       if (strcmp(name, "l1") == 0)
+          {
           int var=strtoul(value, NULL, 10);
           l1 = constrain(255*var/100,MIN,255);
           EEPROM.update(L1ADDR, l1);
-        }
-        if (strcmp(name, "l2") == 0)
-        {
+          }
+       if (strcmp(name, "l2") == 0)
+          {
           int var=strtoul(value, NULL, 10);
           l2 = constrain(255*var/100,l1,255);
           EEPROM.update(L2ADDR, l2);
-        }
-        if (strcmp(name, "l3") == 0)
-        {
+          }
+       if (strcmp(name, "l3") == 0)
+          {
           int var=strtoul(value, NULL, 10);
           l3 = constrain(255*var/100,l2,255);
           EEPROM.update(L3ADDR, l3);
-        }
+          }
         if (strcmp(name, "l4") == 0)
-        {
+          {
           int var=strtoul(value, NULL, 10);
           l4 = constrain(255*var/100,l3,255);
           EEPROM.update(L4ADDR, l4);
-        }
+          }
         if (strcmp(name, "del") == 0)
-        {
+          {
           off_delay = strtoul(value, NULL, 10);
           EEPROM.update(DELADDR, off_delay);
+          }
         }
-      }
     } while (repeat);
-    
-    // after procesing the POST data, tell the web browser to reload
-    // the page using a GET method. 
     server.httpSeeOther(PREFIX);
     return;
   }
-
-  /* for a GET or HEAD, send the standard "it's all OK headers" */
   server.httpSuccess();
-
-  /* we don't output the body for a HEAD request */
   if (type == WebServer::GET)
   {
     /* store the HTML in program memory using the P macro */
@@ -152,7 +123,7 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     server.printP(message);
   }
 }
-
+//-----------------------------------------------------------------------------------------------------------
 void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 {
   if (type == WebServer::POST)
@@ -199,9 +170,9 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 "<body>"
   "<form action=\"/\" method=\"post\">"
     "delay:"
-    "<input type=\"text\" name=\"del\"><br>"
+    "<input type=\"text\" name=\"del\" value=off_delay ><br>"
     "l1:"
-    "<input type=\"text\" name=\"l1\" /><br>"
+    "<input type=\"text\" name=\"l1\" value=l1 /><br>"
     "l2:"
     "<input type=\"text\" name=\"l2\" /><br>"
     "l3:"
@@ -216,6 +187,7 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     server.printP(message);
   }
 }
+//-----------------------------------------------------------------------------------------------------------
 
 void setup()
 {
@@ -250,33 +222,31 @@ void setup()
   Serial.print((l4*100)/255);
   Serial.print("% Delay");
   Serial.print(off_delay);
-  Serial.print("s ");
-  
-  
-  
-  // setup the Ehternet library to talk to the Wiznet board
-  if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0) {
+  Serial.println("s ");
+  if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0) 
+    {
     Serial.println("Failed to  configure Ethernet using DHCP");
-    // no point in carrying on, so do nothing forevermore:
     Ethernet.begin(mac, ip);
-  }
-  
-  // print your local IP address:
+    }
   printIPAddress();
-  /* register our default command (activated with the request of*/
   webserver.setDefaultCommand(&ctrlCmd);
   webserver.addCommand("cfg", &cfgCmd);
-  /* start the server to wait for connections */
   webserver.begin();
   prev=millis();
-}
-
+  }
+//-----------------------------------------------------------------------------------------------------------
 void loop()
-{
-  // process incoming connections one at a time forever
+  {
   webserver.processConnection();
   //Ethernet.maintain();
   cur=millis();
+//-------------------Log light start with parameters if it starts
+  if ((val!=prevval)&&(val!=0))
+    { 
+     Serial.print("Turning light on for ");
+     Serial.print(off_delay);
+     Serial.print("s ");
+     }
   if(val!=prevval){
     prev=millis();
     cur=millis();
