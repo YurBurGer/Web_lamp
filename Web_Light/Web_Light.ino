@@ -24,10 +24,11 @@ IPAddress subnet(255, 255, 0, 0);
 WebServer webserver(PREFIX, 80);
 
 unsigned long int val = 0;            //integer for brightness level
-byte l1 = 1,l2 = 127,l3 = 191,l4=255;
-unsigned int off_delay = 600; //interval for on in seconds
-unsigned long int prev=0,cur=0;
 unsigned long int prevval=val;
+unsigned int l[6]= {0,1,127,191,255,600}; //val,l1,l2,l3,l4,off_delay
+unsigned int off_delay = 600; //interval for on in seconds
+unsigned long int prev=0,cur=0; //timestamps
+
 //-----------------------------------------------------------------------------------------------------------
 void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 {
@@ -35,41 +36,44 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   {
     bool repeat;
     char name[16], value[16];
+//------------------------Eeprom update config-----------------------
     do
     {  repeat = server.readPOSTparam(name, 16, value, 16);
        if(strcmp(value, "") != 0)
        {
-       if (strcmp(name, "val") == 0)
+       if (strcmp(name, "l0") == 0)
           {
           val = strtoul(value, NULL, 10);
+          l[0]=val;
           }
        if (strcmp(name, "l1") == 0)
           {
           int var=strtoul(value, NULL, 10);
-          l1 = constrain(255*var/100,MIN,255);
-          EEPROM.update(L1ADDR, l1);
+          l[1] = constrain(255*var/100,MIN,255);
+          EEPROM.update(L1ADDR, l[1]);
           }
        if (strcmp(name, "l2") == 0)
           {
           int var=strtoul(value, NULL, 10);
-          l2 = constrain(255*var/100,l1,255);
-          EEPROM.update(L2ADDR, l2);
+          l[2] = constrain(255*var/100,l[1],255);
+          EEPROM.update(L2ADDR, l[2]);
           }
        if (strcmp(name, "l3") == 0)
           {
           int var=strtoul(value, NULL, 10);
-          l3 = constrain(255*var/100,l2,255);
-          EEPROM.update(L3ADDR, l3);
+          l[3] = constrain(255*var/100,l[2],255);
+          EEPROM.update(L3ADDR, l[3]);
           }
         if (strcmp(name, "l4") == 0)
           {
           int var=strtoul(value, NULL, 10);
-          l4 = constrain(255*var/100,l3,255);
-          EEPROM.update(L4ADDR, l4);
+          l[4] = constrain(255*var/100,l[3],255);
+          EEPROM.update(L4ADDR, l[4]);
           }
-        if (strcmp(name, "del") == 0)
+        if (strcmp(name, "l5") == 0)
           {
           off_delay = strtoul(value, NULL, 10);
+          l[5]=off_delay;
           EEPROM.update(DELADDR, off_delay);
           }
         }
@@ -78,9 +82,10 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     return;
   }
   server.httpSuccess();
+  
+//-----------------------------web push button-------------------  
   if (type == WebServer::GET)
   {
-    /* store the HTML in program memory using the P macro */
     P(message) = 
 "<!DOCTYPE html><html><head>"
   "<title>Light control</title>"
@@ -99,98 +104,85 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   "</script>"
 "</head>"
 "<body>"
-  "<div>"
+  "<table><tr>"
+  "<td width=15% align=center>"
     "<button type=\"button\" class=\"off\" style='font-size:200%;height:100px;width:100px\'>0%</button>"
-  "</div>"
-  "<div>"
+  "</td>"
+  "<td width=15% align=center>"
   "<button type=\"button\" class=\"btn1\" style='font-size:200%;height:100px;width:100px\'>25%</button>"
-  "</div>"
-  "<div>"
+  "</td>"
+  "<td width=15% align=center>"
   "<button type=\"button\" class=\"btn2\" style='font-size:200%;height:100px;width:100px\'>50%</button>"
-  "</div>"
-  "<div>"
+  "</td>"
+  "<td width=15% align=center>"
   "<button type=\"button\" class=\"btn3\" style='font-size:200%;height:100px;width:100px\'>75%</button>"
-  "</div>"
-  "<div>"
+  "</td>"
+  "<td width=15% align=center>"
   "<button type=\"button\" class=\"btn4\" style='font-size:200%;height:100px;width:100px\'>100%</button>"
-  "</div>"
-  "<div>"
+  "</td>"
+  "<td width=15% align=center>"
   "<button type=\"button\" class=\"cfg\" style='font-size:200%;height:100px;width:100px\'>cfg</button>"
-  "</div>"
-"</body>"
-"</html>";
-
+  "</td></tr></table>";
+ l[0]=val;
     server.printP(message);
+  server.print("<table width=100% border=1><tr>");
+  server.print("Light levels from config: ");
+  for (short int i=1;i<=4;i++)
+  {
+  server.print("<td align=center width=20%>");
+  server.print("l");
+  server.print(i);
+  server.print("=");
+  server.print((l[i]*100)/255);
+  server.print("% ");
+  server.print("</td>");
+  
+  }
+  server.print("<td align=center width=20%>");
+  server.print(" Delay");
+  server.print("=");
+  server.print(l[6]);
+  server.println("s ");
+  server.print("</td>");
+  server.print("</table>");
+  server.print("</body></html>");
   }
 }
 //-----------------------------------------------------------------------------------------------------------
 void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
-{
-  if (type == WebServer::POST)
   {
+    
+  if (type == WebServer::POST)
+    {
     bool repeat;
     char name[16], value[16];
     do
-    {
-      /* readPOSTparam returns false when there are no more parameters
-       * to read from the input.  We pass in buffers for it to store
-       * the name and value strings along with the length of those
-       * buffers. */
-      repeat = server.readPOSTparam(name, 16, value, 16);
-
-      /* this is a standard string comparison function.  It returns 0
-       * when there's an exact match.  We're looking for a parameter
-       * named red/green/blue here. */
-      if (strcmp(name, "val") == 0)
       {
-  /* use the STRing TO Unsigned Long function to turn the string
-   * version of the color strength value into our integer red/green/blue
-   * variable */
+      repeat = server.readPOSTparam(name, 16, value, 16);
+      if (strcmp(name, "val") == 0)
+        {
         val = strtoul(value, NULL, 10);
-      }
-    } while (repeat);
-    
-    // after procesing the POST data, tell the web browser to reload
-    // the page using a GET method. 
+        }
+      } while (repeat);
     server.httpSeeOther("cfg");
     return;
-  }
-
-  /* for a GET or HEAD, send the standard "it's all OK headers" */
+    }
   server.httpSuccess();
-
-  /* we don't output the body for a HEAD request */
+  
   if (type == WebServer::GET)
-  {
-    /* store the HTML in program memory using the P macro */
-    P(message) = 
-"<!DOCTYPE html><html><head>"
-  "<title>Light control config</title>"
-"</head>"
-"<body>"
-  "<form action=\"/\" method=\"post\">"
-    "delay:"
-    "<input type=\"text\" name=\"del\" value=off_delay ><br>"
-    "l1:"
-    "<input type=\"text\" name=\"l1\" value=l1 /><br>"
-    "l2:"
-    "<input type=\"text\" name=\"l2\" /><br>"
-    "l3:"
-    "<input type=\"text\" name=\"l3\" /><br>"
-    "l4:"
-    "<input type=\"text\" name=\"l4\" /><br>"
-    "<input type=\"submit\" value=\"Set\">"
-  "</form>"
-"</body>"
-"</html>";
-
-    server.printP(message);
+    {
+    server.print("<!DOCTYPE html><html><head><title>Light control config</title></head><body><form action= method=post>");
+    server.print("delay:<input type=text name=del value=");server.print(l[5]);server.print(" ><br>");
+    for(unsigned short int i=1;i<=4;i++){
+    server.print("l");server.print(i);server.print(":<input type=text name=l");server.print(i);server.print(" value=");server.print((l[i]*100)/255);server.print(">%<br>");
+    }
+    server.print("<input type=submit value=Set>");
+    server.print("</form></body></html>");
+    }
   }
-}
 //-----------------------------------------------------------------------------------------------------------
-
 void setup()
-{
+  {
   //pins setup
   pinMode(OUT_PIN, OUTPUT);
   analogWrite(OUT_PIN, MIN);
@@ -198,29 +190,29 @@ void setup()
   analogWrite(ON_PIN, 0);
 
   //get settings from EEPROM
-  l1=constrain(EEPROM.read(L1ADDR),MIN,255);
-  l2=constrain(EEPROM.read(L2ADDR),l1,255);
-  l3=constrain(EEPROM.read(L3ADDR),l2,255);
-  l4=constrain(EEPROM.read(L4ADDR),l3,255);
+  l[1]=constrain(EEPROM.read(L1ADDR),MIN,255);
+  l[2]=constrain(EEPROM.read(L2ADDR),l[2],255);
+  l[3]=constrain(EEPROM.read(L3ADDR),l[3],255);
+  l[4]=constrain(EEPROM.read(L4ADDR),l[4],255);
   off_delay=EEPROM.read(DELADDR);
-  
+  l[5]=off_delay;
   //Open serial
   Serial.begin(115200);
   
   //while (!Serial) {
   //  ; // wait for serial port to connect. Needed for native USB port only
   //}
-  
-  Serial.print("light levels from config");
-  Serial.print(" l1=");
-  Serial.print((l1*100)/255);
-  Serial.print("% l2=");
-  Serial.print((l2*100)/255);
-  Serial.print("% l3=");
-  Serial.print((l3*100)/255);
-  Serial.print("% l4=");
-  Serial.print((l4*100)/255);
-  Serial.print("% Delay");
+  Serial.print("light levels from config:");
+  for(short int i=1;i<=4;i++)
+    {
+  Serial.print(" l");
+  Serial.print(i);
+  Serial.print("=");
+  Serial.print((l[i]*100)/255);
+  Serial.print("%");
+    }
+  Serial.print(" Delay");
+  Serial.print("=");
   Serial.print(off_delay);
   Serial.println("s ");
   if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0) 
@@ -268,19 +260,19 @@ void loop()
        analogWrite(OUT_PIN, MIN);
      break;
     case 1:
-      analogWrite(OUT_PIN, l1);
+      analogWrite(OUT_PIN, l[1]);
       digitalWrite(ON_PIN,HIGH);
      break;
     case 2:
-      analogWrite(OUT_PIN, l2);
+      analogWrite(OUT_PIN, l[2]);
       digitalWrite(ON_PIN,HIGH);
      break;
     case 3:
-      analogWrite(OUT_PIN, l3);
+      analogWrite(OUT_PIN, l[3]);
       digitalWrite(ON_PIN,HIGH);
      break;
     case 4:
-      analogWrite(OUT_PIN, l4);
+      analogWrite(OUT_PIN, l[4]);
       digitalWrite(ON_PIN,HIGH);
      break;
   }
