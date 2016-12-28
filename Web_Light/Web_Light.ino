@@ -26,6 +26,7 @@ WebServer webserver(PREFIX, 80);
 unsigned long int val = 0;            //integer for brightness level
 unsigned long int prevval=val;
 unsigned int l[6]= {0,1,127,191,255,600}; //val,l1,l2,l3,l4,off_delay
+
 unsigned int off_delay = 600; //interval for on in seconds
 unsigned long int prev=0,cur=0; //timestamps
 
@@ -34,51 +35,64 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 {
   if (type == WebServer::POST)
   {
-    bool repeat;
-    char name[16], value[16];
+ //   bool repeat;
+ //   char p_name[16], value[16];
 //------------------------Eeprom update config-----------------------
-    do
-    {  repeat = server.readPOSTparam(name, 16, value, 16);
+   /* do
+    {  repeat = server.readPOSTparam(p_name, 16, value, 16);
        if(strcmp(value, "") != 0)
        {
-       if (strcmp(name, "l0") == 0)
+       if (strcmp(p_name, "l0") == 0)
           {
           val = strtoul(value, NULL, 10);
           l[0]=val;
           }
-       if (strcmp(name, "l1") == 0)
+       if (strcmp(p_name, "l1") == 0)
           {
           int var=strtoul(value, NULL, 10);
           l[1] = constrain(255*var/100,MIN,255);
           EEPROM.update(L1ADDR, l[1]);
           }
-       if (strcmp(name, "l2") == 0)
+       if (strcmp(p_name, "l2") == 0)
           {
           int var=strtoul(value, NULL, 10);
           l[2] = constrain(255*var/100,l[1],255);
           EEPROM.update(L2ADDR, l[2]);
           }
-       if (strcmp(name, "l3") == 0)
+       if (strcmp(p_name, "l3") == 0)
           {
           int var=strtoul(value, NULL, 10);
           l[3] = constrain(255*var/100,l[2],255);
           EEPROM.update(L3ADDR, l[3]);
           }
-        if (strcmp(name, "l4") == 0)
+        if (strcmp(p_name, "l4") == 0)
           {
           int var=strtoul(value, NULL, 10);
           l[4] = constrain(255*var/100,l[3],255);
           EEPROM.update(L4ADDR, l[4]);
           }
-        if (strcmp(name, "l5") == 0)
+        if (strcmp(p_name, "del") == 0)
           {
           off_delay = strtoul(value, NULL, 10);
           l[5]=off_delay;
           EEPROM.update(DELADDR, off_delay);
           }
         }
-    } while (repeat);
-    server.httpSeeOther(PREFIX);
+    } while (repeat);*/
+ /*unsigned short i=0;
+ Serial.println("Eeprom config upgrade");
+      do{
+      Serial.print("l");
+      Serial.print(i);
+      Serial.print("=");
+      Serial.print((100*l[i])/255);
+      Serial.print("");
+      
+      i++;
+      }while(i<6);
+      Serial.println();*/
+      
+      server.httpSeeOther(PREFIX);
     return;
   }
   server.httpSuccess();
@@ -123,8 +137,15 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   "<td width=15% align=center>"
   "<button type=\"button\" class=\"cfg\" style='font-size:200%;height:100px;width:100px\'>cfg</button>"
   "</td></tr></table>";
- l[0]=val;
-    server.printP(message);
+  server.printP(message);
+  l[0]=val;
+  server.print("<table><tr><td align=center width=50%>current level=");
+  server.print((100*l[0])/255);
+  server.print("</td><td width=50% align=center> timeout=");
+  server.println(l[5]);
+  server.print("</td><tr></table>");
+  
+  
   server.print("<table width=100% border=1><tr>");
   server.print("Light levels from config: ");
   for (short int i=1;i<=4;i++)
@@ -148,17 +169,21 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   server.print("</body></html>");
   }
 }
-//-----------------------------------------------------------------------------------------------------------
+//--------------------------Configuration page---------------------------------------------------------------------------------
 void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   {
     
   if (type == WebServer::POST)
-    {Serial.println("Config update");
+    {
     bool repeat;
     char p_name[16],value[16];
+    unsigned int var;
+    unsigned short int vi=0;
+    Serial.println("Config form read");
     do
       {
       repeat = server.readPOSTparam(p_name, 16, value, 16);
+      
       unsigned short i=0;
       do{
       Serial.print(p_name[i]);i++;}while(p_name[i]);
@@ -167,11 +192,26 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
       do{Serial.print(value[i]);i++;}while(value[i]);
       Serial.println();
       
+      //if(vi>0)
+       // {    
+        var=strtol(value, NULL, 10);
+        Serial.print("var=");
+        Serial.print(var);
+        l[vi+1] = constrain(var,0,100);
+        Serial.print(" Writing eeprom l");
+        Serial.print(vi+1);
+        Serial.print("=");
+        Serial.print(l[vi+1]);
+        Serial.println();
+        EEPROM.update(vi,l[vi+1]);
+      //  }
+      vi++;
       if (strcmp(p_name, "val") == 0)
         {
         val = strtoul(value, NULL, 10);
         }
       } while (repeat);
+   
     server.httpSeeOther("cfg");
     return;
     }
@@ -180,12 +220,14 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   if (type == WebServer::GET)
     {
     server.print("<!DOCTYPE html><html><head><title>Light control config</title></head><body><form action=\\cfg method=post>");
-    server.print("delay:<input type=text name=del value=");server.print(l[5]);server.print(" ><br>");
+    l[0]=0;
     for(unsigned short int i=1;i<=4;i++){
     server.print("l");server.print(i);server.print(":<input type=text name=l");server.print(i);server.print(" value=");server.print((l[i]*100)/255);server.print(">%<br>");
     }
-    server.print("<input type=submit value=set>");
-    server.print("</form></body></html>");
+    server.print("delay:<input type=text name=del value=");server.print(l[5]);server.print(" ><br>");
+    server.print("<input type=submit value=set></form>");
+    server.print("<form action=\\><button type=submit>Home</button></form>");
+    server.print("</body></html>");
     }
   }
 //-----------------------------------------------------------------------------------------------------------
