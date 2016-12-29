@@ -1,5 +1,7 @@
 #include "SPI.h"
 #include "Ethernet.h"
+//#define WEBDUINO_SERIAL_DEBUGGING 1 //uncomment to see recieved requests
+//#define WEBDUINO_SERIAL_DEBUGGING 5 //uncomment to see full debug
 #include "WebServer.h"
 #include <EEPROM.h>
 
@@ -10,7 +12,9 @@ IPAddress gateway(192, 168, 80, 1);
 IPAddress subnet(255, 255, 0, 0);
 
 
-#define WEBDUINO_SERIAL_DEBUGGING 2
+//#define SERIAL_DEBUGGING 2 //uncomment for full output
+//#define SERIAL_DEBUGGING 1 //uncomment for address outpout
+
 #define PREFIX ""
 #define DHCPREQ 30000 //ms delay
 #define DHCPRES 5000 //ms delay
@@ -20,7 +24,7 @@ IPAddress subnet(255, 255, 0, 0);
 #define L2ADDR 2 
 #define L3ADDR 3 
 #define L4ADDR 4
-#define DELADDR 5  
+#define DELADDR 5 
 
 WebServer webserver(PREFIX, 80);
 //const char print_td[]="<td align=center width=15%>";
@@ -113,30 +117,44 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
     char p_name[16],value[16];
     unsigned int var; //value varaible for conversion
     unsigned short int vi=1; //local counter 
-    Serial.println("Config form read");
+    #if SERIAL_DEBUGGING > 1
+      Serial.println("Config form read");
+    #endif
 //---------------------------parse post data -----------------------   
     do{
       repeat = server.readPOSTparam(p_name, 16, value, 16);
       
       unsigned short i=0;
       do{
-        Serial.print(p_name[i]);
+        #if SERIAL_DEBUGGING > 1
+          Serial.print(p_name[i]);
+        #endif
         i++;
       }while(p_name[i]);
-      Serial.print("=");
+      #if SERIAL_DEBUGGING > 1
+        Serial.print("=");
+      #endif
       i=0;
       do{
-        Serial.print(value[i]);
+        #if SERIAL_DEBUGGING > 1
+          Serial.print(value[i]);
+        #endif
         i++;
       }while(value[i]);
-      Serial.println();
+      #if SERIAL_DEBUGGING > 1
+        Serial.println();
+      #endif
 //-------------------------------print parse log to serial && update eeprom if any difference      
       if(vi>0&&vi<=5){    
         var=strtol(value, NULL, 10);
-        Serial.print("var=");
-        Serial.print(var);
+        #if SERIAL_DEBUGGING > 1
+          Serial.print("var=");
+          Serial.print(var);
+        #endif
         if(vi<=4){
-          Serial.print("%");
+          #if SERIAL_DEBUGGING > 1
+            Serial.print("%");
+          #endif
         }
         if((vi)<5){
           l[vi] = constrain(var,0,100);
@@ -144,29 +162,26 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
         if((vi)==5){
           l[vi] = constrain(var,0,255);
         }
-        
-        Serial.print(" Writing eeprom l");
-        Serial.print(vi);
-        Serial.print("=");
-        Serial.print(l[vi]);
-        Serial.print("(");
-        if((vi)<5){
+        #if SERIAL_DEBUGGING > 1
+          Serial.print(" Writing eeprom l");
+          Serial.print(vi);
+          Serial.print("=");
           Serial.print(l[vi]);
-        }
-        if(vi<=4){
-          Serial.print("%)");
-        }
-        else {
-          Serial.print("s)");
-        }
-        Serial.println();
+          Serial.print("(");
+          if((vi)<5){
+            Serial.print(l[vi]);
+          }
+          if(vi<=4){
+            Serial.print("%)");
+          }
+          else {
+            Serial.print("s)");
+          }
+          Serial.println();
+        #endif
         EEPROM.update(vi,l[vi]);
       }
       vi++;
- /*     if (strcmp(p_name, "val") == 0)
-        {
-        val = strtoul(value, NULL, 10);
-        }*/
       } while (repeat);
     val=0;
     server.httpSeeOther("cfg");
@@ -215,24 +230,30 @@ void setup(){
   l[5]=EEPROM.read(DELADDR);
   //Open serial
   Serial.begin(115200);
-  
-  Serial.print("light levels from config:");
-  for(short int i=0;i<=4;i++){
-    Serial.print(" l");
-    Serial.print(i);
+
+  #if SERIAL_DEBUGGING > 1
+    Serial.print("light levels from config:");
+    for(short int i=0;i<=4;i++){
+      Serial.print(" l");
+      Serial.print(i);
+      Serial.print("=");
+      Serial.print(l[i]);
+      Serial.print("%");
+    }
+    Serial.print(" Delay");
     Serial.print("=");
-    Serial.print(l[i]);
-    Serial.print("%");
-  }
-  Serial.print(" Delay");
-  Serial.print("=");
-  Serial.print(l[5]);
-  Serial.println("s ");
+    Serial.print(l[5]);
+    Serial.println("s ");
+  #endif
   if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0){
-    Serial.println("Failed to  configure Ethernet using DHCP");
+    #if SERIAL_DEBUGGING > 0
+      Serial.println("Failed to  configure Ethernet using DHCP");
+    #endif
     Ethernet.begin(mac, ip);
   }
-  printIPAddress();
+  #if SERIAL_DEBUGGING > 0
+    printIPAddress();
+  #endif
   webserver.setDefaultCommand(&ctrlCmd);
   webserver.addCommand("cfg", &cfgCmd);
   webserver.begin();
@@ -246,25 +267,31 @@ void loop(){
   if(val!=prevval){
     if (val!=0){
       period=l[5]*1000;
-      Serial.print("on for ");
-      Serial.print(l[5]);
-      Serial.print("s ");
-      Serial.print(" (");
-      Serial.print(period);
-      Serial.println("ms)");
+      #if SERIAL_DEBUGGING > 1
+        Serial.print("on for ");
+        Serial.print(l[5]);
+        Serial.print("s ");
+        Serial.print(" (");
+        Serial.print(period);
+        Serial.println("ms)");
+      #endif
     }
     prev=millis();
     cur=millis();
     prevval=val;
-    Serial.print("val=");
-    Serial.println(val);
+    #if SERIAL_DEBUGGING > 1
+      Serial.print("val=");
+      Serial.println(val);
+    #endif
   }
 //------------------- If Remembered state - check timeout delay  
   else{
    if((val!=0)&&((cur-prev)>period)){
-      Serial.print("LOFF Timeout:");
-      Serial.print(cur-prev/1000);
-      Serial.println("s");
+      #if SERIAL_DEBUGGING > 1
+        Serial.print("LOFF Timeout:");
+        Serial.print((cur-prev)/1000);
+        Serial.println("s");
+      #endif
       val=0;
       prev=millis();
       cur=millis();
