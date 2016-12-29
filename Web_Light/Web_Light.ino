@@ -12,7 +12,7 @@ IPAddress gateway(192, 168, 80, 1);
 IPAddress subnet(255, 255, 0, 0);
 
 
-//#define SERIAL_DEBUGGING 2 //uncomment for full output
+#define SERIAL_DEBUGGING 2 //uncomment for full output
 //#define SERIAL_DEBUGGING 1 //uncomment for address outpout
 
 #define PREFIX ""
@@ -27,7 +27,6 @@ IPAddress subnet(255, 255, 0, 0);
 #define DELADDR 5 
 
 WebServer webserver(PREFIX, 80);
-//const char print_td[]="<td align=center width=15%>";
 byte val = 0;            //integer for brightness level
 byte prevval=val;
 unsigned int l[6]= {0,0,0,0,255,600}; //l0,l1,l2,l3,l4,off_delay
@@ -252,7 +251,8 @@ void setup(){
     Ethernet.begin(mac, ip);
   }
   #if SERIAL_DEBUGGING > 0
-    printIPAddress();
+    Serial.print("IP:");
+    Serial.println(Ethernet.localIP());
   #endif
   webserver.setDefaultCommand(&ctrlCmd);
   webserver.addCommand("cfg", &cfgCmd);
@@ -286,7 +286,7 @@ void loop(){
   }
 //------------------- If Remembered state - check timeout delay  
   else{
-   if((val!=0)&&((cur-prev)>period)){
+    if((val!=0)&&((cur-prev)>period)){
       #if SERIAL_DEBUGGING > 1
         Serial.print("LOFF Timeout:");
         Serial.print((cur-prev)/1000);
@@ -295,8 +295,9 @@ void loop(){
       val=0;
       prev=millis();
       cur=millis();
-    }
+    }   
   }
+  
   switch(val){
   case 0:
      analogWrite(ON_PIN,0);
@@ -319,14 +320,4 @@ void loop(){
     digitalWrite(ON_PIN,HIGH);
    break;
   } 
-}
-
-void printIPAddress(){
-  Serial.print("IP: ");
-  for (byte thisByte = 0; thisByte < 4; thisByte++){
-    // print the value of each byte of the IP address:
-    Serial.print(Ethernet.localIP()[thisByte], DEC);
-    Serial.print(".");
-  }
-  Serial.println();
 }
