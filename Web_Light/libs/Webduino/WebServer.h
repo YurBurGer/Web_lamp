@@ -578,10 +578,8 @@ void WebServer::processConnection()
 
 void WebServer::processConnection(char *buff, int *bufflen)
 {
-  int urlPrefixLen = strlen(m_urlPrefix);
-
+  int urlPrefixLen = strlen(m_urlPrefix);  
   m_client = m_server.available();
-
   if (m_client) {
     m_readingContent = false;
     buff[0] = 0;

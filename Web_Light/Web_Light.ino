@@ -12,7 +12,7 @@ IPAddress gateway(192, 168, 80, 1);
 IPAddress subnet(255, 255, 0, 0);
 
 
-#define SERIAL_DEBUGGING 2 //uncomment for full output
+//#define SERIAL_DEBUGGING 2 //uncomment for full output
 //#define SERIAL_DEBUGGING 1 //uncomment for address outpout
 
 #define PREFIX ""
@@ -30,7 +30,7 @@ WebServer webserver(PREFIX, 80);
 byte val = 0;            //integer for brightness level
 byte prevval=val;
 unsigned int l[6]= {0,0,0,0,255,600}; //l0,l1,l2,l3,l4,off_delay
-unsigned long int lamp_start = 0, cur = 0,period = 0; //timestamps
+unsigned long int lamp_start = 0, last_restart, cur = 0,period = 0; //timestamps
 
 
 void printCmdPage(WebServer & server){
@@ -221,6 +221,16 @@ void print_levels(){
     Serial.print(l[5]);
     Serial.println("s ");
 }
+
+void restart_server(){
+  if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0){
+    #if SERIAL_DEBUGGING > 0
+      Serial.println("Failed to  configure Ethernet using DHCP");
+    #endif
+    Ethernet.begin(mac, ip);
+  }
+  
+}
 //-----------------------------------------------------------------------------------------------------------
 void setup(){
   //pins setup
@@ -241,24 +251,13 @@ void setup(){
     print_levels();
   #endif
   
-  
-  
-  if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0){
-    #if SERIAL_DEBUGGING > 0
-      Serial.println("Failed to  configure Ethernet using DHCP");
-    #endif
-    Ethernet.begin(mac, ip);
-  }
-  
-  
+  webserver.setDefaultCommand(&ctrlCmd);
+  webserver.addCommand("cfg", &cfgCmd);
+  restart_server();
   #if SERIAL_DEBUGGING > 0
     Serial.print("IP:");
     Serial.println(Ethernet.localIP());
   #endif
-  
-  webserver.setDefaultCommand(&ctrlCmd);
-  webserver.addCommand("cfg", &cfgCmd);
-  webserver.begin();
 }
 
 void sendCurrentLampCommand(){
@@ -288,7 +287,11 @@ void processLamps(){
 }
 
 //-----------------------------------------------------------------------------------------------------------
-void loop(){
+void loop(){  
   webserver.processConnection();
   processLamps();
+  if (cur - last_restart > 15000){
+    restart_server();
+    last_restart = cur;
+  }
 }
