@@ -229,7 +229,7 @@ void restart_server(){
     #endif
     Ethernet.begin(mac, ip);
   }
-  
+  last_restart = millis();
 }
 //-----------------------------------------------------------------------------------------------------------
 void setup(){
@@ -258,6 +258,7 @@ void setup(){
     Serial.print("IP:");
     Serial.println(Ethernet.localIP());
   #endif
+  
 }
 
 void sendCurrentLampCommand(){
@@ -292,6 +293,5 @@ void loop(){
   processLamps();
   if (cur - last_restart > 15000){
     restart_server();
-    last_restart = cur;
   }
 }
