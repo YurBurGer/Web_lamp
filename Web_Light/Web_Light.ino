@@ -30,30 +30,10 @@ WebServer webserver(PREFIX, 80);
 byte val = 0;            //integer for brightness level
 byte prevval=val;
 unsigned int l[6]= {0,0,0,0,255,600}; //l0,l1,l2,l3,l4,off_delay
-unsigned long int prev=0,cur=0,period=0; //timestamps
+unsigned long int lamp_start = 0, cur = 0,period = 0; //timestamps
 
-//-----------------------------------------------------------------------------------------------------------
-void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
-  if (type == WebServer::POST){
-    bool repeat;
-    
-//---------------------read post parameters & set val--------    
-    char name[16], value[16];
-    do{
-      repeat = server.readPOSTparam(name, 16, value, 16);
-      if(strcmp(value, "") != 0){
-        if (strcmp(name, "val") == 0){
-          val = strtoul(value, NULL, 10);
-        }
-      }
-    } while (repeat);
-    server.httpSeeOther(PREFIX);
-    return;
-    }
-  server.httpSuccess();
-  
-//-----------------------------web push button print-------------------  
-  if (type == WebServer::GET){
+
+void printCmdPage(WebServer & server){
     P(head) = 
 "<!DOCTYPE html><html><head>"
   "<title>Light control</title>"
@@ -61,7 +41,6 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
   "<script src='http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js'></script>"
   "<script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js'></script>"
   "<script>"
-  
 //custom functions    
     "$(document).ready(function(){ $('.btn0').click( function(){$.post('/', { val: \"0\" } ); }); });"
     "$(document).ready(function(){ $('.btn1').click( function(){$.post('/', { val: \"1\" } ); }); });"
@@ -105,90 +84,31 @@ void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
     server.printP(p3);
     server.print(l[4]);
     server.printP(p4);   
-  }
-  
 }
-//--------------------------Configuration page---------------------------------------------------------------------------------
-void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
-    
-  if (type == WebServer::POST){
-    bool repeat;
-    char p_name[16],value[16];
-    unsigned int var; //value varaible for conversion
-    unsigned short int vi=1; //local counter 
-    #if SERIAL_DEBUGGING > 1
-      Serial.println("Config form read");
-    #endif
-//---------------------------parse post data -----------------------   
+
+void getValParam(WebServer &server, byte & result){
+    char name[16], value[16];
+    bool repeat = true;
     do{
-      repeat = server.readPOSTparam(p_name, 16, value, 16);
-      
-      unsigned short i=0;
-      do{
-        #if SERIAL_DEBUGGING > 1
-          Serial.print(p_name[i]);
-        #endif
-        i++;
-      }while(p_name[i]);
-      #if SERIAL_DEBUGGING > 1
-        Serial.print("=");
-      #endif
-      i=0;
-      do{
-        #if SERIAL_DEBUGGING > 1
-          Serial.print(value[i]);
-        #endif
-        i++;
-      }while(value[i]);
-      #if SERIAL_DEBUGGING > 1
-        Serial.println();
-      #endif
-//-------------------------------print parse log to serial && update eeprom if any difference      
-      if(vi>0&&vi<=5){    
-        var=strtol(value, NULL, 10);
-        #if SERIAL_DEBUGGING > 1
-          Serial.print("var=");
-          Serial.print(var);
-        #endif
-        if(vi<=4){
-          #if SERIAL_DEBUGGING > 1
-            Serial.print("%");
-          #endif
-        }
-        if((vi)<5){
-          l[vi] = constrain(var,0,100);
-        }
-        if((vi)==5){
-          l[vi] = constrain(var,0,255);
-        }
-        #if SERIAL_DEBUGGING > 1
-          Serial.print(" Writing eeprom l");
-          Serial.print(vi);
-          Serial.print("=");
-          Serial.print(l[vi]);
-          Serial.print("(");
-          if((vi)<5){
-            Serial.print(l[vi]);
-          }
-          if(vi<=4){
-            Serial.print("%)");
-          }
-          else {
-            Serial.print("s)");
-          }
-          Serial.println();
-        #endif
-        EEPROM.update(vi,l[vi]);
-      }
-      vi++;
-      } while (repeat);
-    val=0;
-    server.httpSeeOther("cfg");
-    return;
+      repeat = server.readPOSTparam(name, 16, value, 16);      
+      if (!strcmp(name, "val"))
+        result = strtoul(value, NULL, 10);   
+    } while (repeat);
+}
+
+//------------------------------------------------------------------------------
+void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
+  if (type == WebServer::POST){
+    getValParam(server, val);
+    server.httpSeeOther(PREFIX);    
   }
-  server.httpSuccess();
-//---------------------------------print config buttons to config web page ---------------------------------------------  
-  if (type == WebServer::GET){
+  else{  
+      server.httpSuccess();
+      printCmdPage(server);
+  }
+}
+
+void printConfigPage(WebServer & server){
     P(head)=
     "<!DOCTYPE html><html><head><title>Light control config</title></head>"
       "<body><form action=\\cfg method=post>";
@@ -211,28 +131,85 @@ void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
     server.print("delay:<input type=text name=del value=");
     server.print(l[5]);
     server.printP(tail);
+}
+
+byte pname_to_vi(char * p_name){
+    if (!strcmp(p_name, "l1")
+        return 1;
+    if (!strcmp(p_name, "l2")
+        return 2;
+    if (!strcmp(p_name, "l3")
+        return 3;
+    if (!strcmp(p_name, "l4")
+        return 4;
+    if (!strcmp(p_name, "del")
+        return 5;
+    return -1;
+}
+
+void getLParams(WebServer & server,unsigned int * l ){
+    bool repeat = true;
+    do {
+      repeat = (server.readPOSTparam(p_name, 16, value, 16));
+      #if SERIAL_DEBUGGING > 1
+      Serial.print(p_name);      
+      Serial.print("=");
+      Serial.println(value);
+      #endif
+      unsigned byte vi = pname_to_vi(p_name);      
+      if(vi != -1){    
+        var=strtol(value, NULL, 10);
+        #if SERIAL_DEBUGGING > 1
+          Serial.print("var=");
+          Serial.println(var);
+        #endif
+        
+        if(vi<5)
+          l[vi] = constrain(var,0,100);
+        else if(vi==5)
+          l[vi] = constrain(var,0,255);
+      }    
+    } while(repeat);
+}
+
+void update_eeprom(){
+  #if SERIAL_DEBUGGING > 1
+  Serial.print("Writing to eeprom:");
+  #endif
+  
+  for (int vi = 1; vi <=5; vi++){        
+      EEPROM.update(vi, l[vi]);
+      #if SERIAL_DEBUGGING > 1
+      Serial.print(vi);
+      Serial.print("=");
+      Serial.print(l[vi]);
+      Serial.print(" ");
+      #endif
+    }
+
+}
+
+//--------------------------Configuration page----------------------------------
+void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){  
+  if (type == WebServer::POST){
+    char p_name[16],value[16];
+    unsigned int var; //value varaible for conversion
+    unsigned short int vi=1; //local counter 
+    #if SERIAL_DEBUGGING > 1
+      Serial.println("Config form read");
+    #endif
+    getLParams(l);
+    update_eeprom();
+    val=0;
+    server.httpSeeOther("cfg");
+
+  } else{
+    server.httpSuccess();  
+    printConfigPage();
   }
 }
-//-----------------------------------------------------------------------------------------------------------
-void setup(){
-  //pins setup
-  pinMode(OUT_PIN, OUTPUT);
-  analogWrite(OUT_PIN, 0);
-  pinMode(ON_PIN, OUTPUT);
-  analogWrite(ON_PIN, 0);
-
-  //get settings from EEPROM
-  l[1]=constrain(EEPROM.read(L1ADDR),0,255);
-  l[2]=constrain(EEPROM.read(L2ADDR),0,255);
-  l[3]=constrain(EEPROM.read(L3ADDR),0,255);
-  l[4]=constrain(EEPROM.read(L4ADDR),0,255);
-  l[5]=EEPROM.read(DELADDR);
-  //Open serial
-  Serial.begin(115200);
-
-  #if SERIAL_DEBUGGING > 1
-    Serial.print("light levels from config:");
-    for(short int i=0;i<=4;i++){
+void print_levels(){
+f   or(short int i=1;i<=4;i++){
       Serial.print(" l");
       Serial.print(i);
       Serial.print("=");
@@ -243,81 +220,74 @@ void setup(){
     Serial.print("=");
     Serial.print(l[5]);
     Serial.println("s ");
+}
+//-----------------------------------------------------------------------------------------------------------
+void setup(){
+  //pins setup
+  pinMode(OUT_PIN, OUTPUT);
+  analogWrite(OUT_PIN, 0);
+  pinMode(ON_PIN, OUTPUT);
+  analogWrite(ON_PIN, 0);
+
+  //get settings from EEPROM
+  for (int addr =L1ADDR; addr <= DELADDR; i++)
+    l[addr] = EEPROM.read(addr);
+
+  //Open serial
+  Serial.begin(115200);
+
+  #if SERIAL_DEBUGGING > 1
+    Serial.print("light levels from config:");
+    print_levels();
   #endif
+  
   if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0){
     #if SERIAL_DEBUGGING > 0
       Serial.println("Failed to  configure Ethernet using DHCP");
     #endif
     Ethernet.begin(mac, ip);
   }
+  
   #if SERIAL_DEBUGGING > 0
     Serial.print("IP:");
     Serial.println(Ethernet.localIP());
   #endif
+  
   webserver.setDefaultCommand(&ctrlCmd);
   webserver.addCommand("cfg", &cfgCmd);
   webserver.begin();
+  
   prev=millis();
 }
+
+void sendCurrentLampCommand(){
+  if (val == 0){
+      analogWrite(ON_PIN, 0);
+      digitalWrite(OUT_PIN, 0);   
+  } else if (val < 5){
+      analogWrite(OUT_PIN, ceil(l[val] * 255 / 100));
+      digitalWrite(ON_PIN,HIGH);
+  }
+}
+
+void processLamps(){
+  cur=millis();
+  
+  if(val != prevval){ // пользователь изменил состояние?
+    if (val > 0) // пользователь включил лампу?
+      period = l[5]*1000;
+    lamp_start = cur;
+    prevval = val;
+  }
+  else // обычная работа
+    if( val && ((cur - lamp_start)>period))
+      prevval = val = 0;
+  
+  sendCurrentLampCommand();
+}
+
 //-----------------------------------------------------------------------------------------------------------
 void loop(){
   webserver.processConnection();
-  cur=millis();
-//------------------- Remember Current Times if val changes and Show timeout delay if light turns on  (val!=0)  
-  if(val!=prevval){
-    if (val!=0){
-      period=l[5]*1000;
-      #if SERIAL_DEBUGGING > 1
-        Serial.print("on for ");
-        Serial.print(l[5]);
-        Serial.print("s ");
-        Serial.print(" (");
-        Serial.print(period);
-        Serial.println("ms)");
-      #endif
-    }
-    prev=millis();
-    cur=millis();
-    prevval=val;
-    #if SERIAL_DEBUGGING > 1
-      Serial.print("val=");
-      Serial.println(val);
-    #endif
-  }
-//------------------- If Remembered state - check timeout delay  
-  else{
-    if((val!=0)&&((cur-prev)>period)){
-      #if SERIAL_DEBUGGING > 1
-        Serial.print("LOFF Timeout:");
-        Serial.print((cur-prev)/1000);
-        Serial.println("s");
-      #endif
-      val=0;
-      prev=millis();
-      cur=millis();
-    }   
-  }
-  
-  switch(val){
-  case 0:
-     analogWrite(ON_PIN,0);
-     analogWrite(OUT_PIN, 0);
-   break;
-  case 1:
-    analogWrite(OUT_PIN, ceil((100*l[1])/255));
-    digitalWrite(ON_PIN,HIGH);
-   break;
-  case 2:
-    analogWrite(OUT_PIN,ceil((100*l[2])/255));
-    digitalWrite(ON_PIN,HIGH);
-   break;
-  case 3:
-    analogWrite(OUT_PIN, ceil((100*l[3])/255));
-    digitalWrite(ON_PIN,HIGH);
-   break;
-  case 4:
-    analogWrite(OUT_PIN, ceil((100*l[4])/255));
-    digitalWrite(ON_PIN,HIGH);
-   break;
-  } 
+  processLamps();
 }
