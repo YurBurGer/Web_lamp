@@ -133,22 +133,24 @@ void printConfigPage(WebServer & server){
     server.printP(tail);
 }
 
-byte pname_to_vi(char * p_name){
-    if (!strcmp(p_name, "l1")
+unsigned char pname_to_vi(char * p_name){
+    if (!strcmp(p_name, "l1"))
         return 1;
-    if (!strcmp(p_name, "l2")
+    if (!strcmp(p_name, "l2"))
         return 2;
-    if (!strcmp(p_name, "l3")
+    if (!strcmp(p_name, "l3"))
         return 3;
-    if (!strcmp(p_name, "l4")
+    if (!strcmp(p_name, "l4"))
         return 4;
-    if (!strcmp(p_name, "del")
+    if (!strcmp(p_name, "del"))
         return 5;
     return -1;
 }
 
 void getLParams(WebServer & server,unsigned int * l ){
     bool repeat = true;
+    char p_name[16], value[16];
+    unsigned int var = 0;
     do {
       repeat = (server.readPOSTparam(p_name, 16, value, 16));
       #if SERIAL_DEBUGGING > 1
@@ -156,7 +158,7 @@ void getLParams(WebServer & server,unsigned int * l ){
       Serial.print("=");
       Serial.println(value);
       #endif
-      unsigned byte vi = pname_to_vi(p_name);      
+      unsigned char vi = pname_to_vi(p_name);      
       if(vi != -1){    
         var=strtol(value, NULL, 10);
         #if SERIAL_DEBUGGING > 1
@@ -178,6 +180,7 @@ void update_eeprom(){
   #endif
   
   for (int vi = 1; vi <=5; vi++){        
+      
       EEPROM.update(vi, l[vi]);
       #if SERIAL_DEBUGGING > 1
       Serial.print(vi);
@@ -192,24 +195,21 @@ void update_eeprom(){
 //--------------------------Configuration page----------------------------------
 void cfgCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){  
   if (type == WebServer::POST){
-    char p_name[16],value[16];
-    unsigned int var; //value varaible for conversion
-    unsigned short int vi=1; //local counter 
     #if SERIAL_DEBUGGING > 1
       Serial.println("Config form read");
     #endif
-    getLParams(l);
+    getLParams(server, l);
     update_eeprom();
     val=0;
     server.httpSeeOther("cfg");
 
   } else{
     server.httpSuccess();  
-    printConfigPage();
+    printConfigPage(server);
   }
 }
 void print_levels(){
-f   or(short int i=1;i<=4;i++){
+    for(short int i=1;i<=4;i++){
       Serial.print(" l");
       Serial.print(i);
       Serial.print("=");
@@ -230,7 +230,7 @@ void setup(){
   analogWrite(ON_PIN, 0);
 
   //get settings from EEPROM
-  for (int addr =L1ADDR; addr <= DELADDR; i++)
+  for (int addr =L1ADDR; addr <= DELADDR; addr++)
     l[addr] = EEPROM.read(addr);
 
   //Open serial
@@ -241,12 +241,15 @@ void setup(){
     print_levels();
   #endif
   
+  
+  
   if (Ethernet.begin(mac,DHCPREQ,DHCPRES) == 0){
     #if SERIAL_DEBUGGING > 0
       Serial.println("Failed to  configure Ethernet using DHCP");
     #endif
     Ethernet.begin(mac, ip);
   }
+  
   
   #if SERIAL_DEBUGGING > 0
     Serial.print("IP:");
@@ -256,8 +259,6 @@ void setup(){
   webserver.setDefaultCommand(&ctrlCmd);
   webserver.addCommand("cfg", &cfgCmd);
   webserver.begin();
-  
-  prev=millis();
 }
 
 void sendCurrentLampCommand(){
