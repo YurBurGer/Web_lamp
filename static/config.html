@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html><head><title>Light control config</title>
+
+  <style>
+      button, .link {
+         font-size:200%;height:150px;width:150px
+      }
+  </style>
+</head>
+<body>
+    <form action="/cfg" method=post>
+    l1: <input type="text" name=l1 value="{{l1}}">%<br>
+    l2: <input type="text" name=l2 value="{{l2}}">%<br>
+    l3: <input type="text" name=l3 value="{{l3}}">%<br>
+    l4: <input type="text" name=l4 value="{{l4}}">%<br>        
+
+    delay:<input type=text name="delay" value="{{delay}}">sec<br>
+    <input type=submit value=save>
+    </form>    
+    <a class="link" href="/"> Home </a> 
+</body>
+</html>
