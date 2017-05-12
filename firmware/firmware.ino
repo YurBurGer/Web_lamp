@@ -116,7 +116,7 @@ void getLParams(WebServer & server,unsigned int * l ){
         if(vi<5)
           l[vi] = constrain(var,0,100);
         else if(vi==5)
-          l[vi] = constrain(var,0,255);
+          l[vi] = constrain(var,0,3600);
       }    
     } while(repeat);
 }
@@ -150,15 +150,15 @@ void update_eeprom(){
   Serial.print("Writing to eeprom:");
   #endif  
   for (int vi = 1; vi <=5; vi++){              
-      EEPROM.update(vi, l[vi]);
+      EEPROM.update((vi-1) * 2 + 1, l[vi] & 255);
+      EEPROM.update((vi-1) * 2 + 2, (l[vi]>>8) & 255);
       #if SERIAL_DEBUGGING > 1
-      Serial.print(vi);
-      Serial.print("=");
-      Serial.print(l[vi]);
-      Serial.print(" ");
+        Serial.print(vi);
+        Serial.print("=");
+        Serial.print(l[vi]);
+        Serial.print(" ");
       #endif
     }
-
 }
 
 //--------------------------Configuration page----------------------------------
@@ -231,8 +231,11 @@ void setup(){
   analogWrite(ON_PIN, 0);
 
   //get settings from EEPROM
-  for (int addr=L1ADDR; addr <= DELAYADDR; addr++)
-    l[addr] = EEPROM.read(addr);
+  for (int addr=L1ADDR; addr <= DELAYADDR; addr++){
+    l[addr] = EEPROM.read((addr-L1ADDR)* 2 + L1ADDR +1);
+    l[addr]<<=8;
+    l[addr]+= EEPROM.read((addr-L1ADDR)* 2 + L1ADDR);
+  }
 
   //Open serial
   Serial.begin(115200);
