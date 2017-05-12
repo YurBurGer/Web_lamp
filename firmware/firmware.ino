@@ -18,7 +18,7 @@ const int localUdpPort = 5555;
 EthernetUDP Udp;
 
 
-#define SERIAL_DEBUGGING 2 //uncomment for full output
+//#define SERIAL_DEBUGGING 2 //uncomment for full output
 //#define SERIAL_DEBUGGING 1 //uncomment for address outpout
 
 #define PREFIX ""
