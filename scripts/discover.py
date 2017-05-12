@@ -3,7 +3,7 @@
 import socket
 
 UDP_IP = ""
-UDP_PORT = 5005
+UDP_PORT = 5432
 
 sock = socket.socket(socket.AF_INET, # Internet
                      socket.SOCK_DGRAM) # UDP

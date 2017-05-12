@@ -14,9 +14,11 @@ IPAddress default_ip(192, 168, 80, 5);
 IPAddress myDns(192, 168, 80, 1);
 IPAddress gateway(192, 168, 80, 1);
 IPAddress subnet(255, 255, 0, 0);
+const int localUdpPort = 5555;
+EthernetUDP Udp;
 
 
-//#define SERIAL_DEBUGGING 2 //uncomment for full output
+#define SERIAL_DEBUGGING 2 //uncomment for full output
 //#define SERIAL_DEBUGGING 1 //uncomment for address outpout
 
 #define PREFIX ""
@@ -122,7 +124,7 @@ void getLParams(WebServer & server,unsigned int * l ){
 void ctrlCmd(WebServer &server, WebServer::ConnectionType type, char *, bool){
   if (type == WebServer::POST){
     getValParam(server, val);
-    server.httpSeeOther(PREFIX);    
+    server.httpSeeOther("/");    
   }
   else{  
       server.httpSuccess();
@@ -189,14 +191,36 @@ void print_levels(){
     Serial.println("s ");
 }
 
+char ANNOUNCE []= "announce";
+void announce(){
+    
+          
+    IPAddress address = ~Ethernet.subnetMask() | Ethernet.gatewayIP();
+    #ifdef SERIAL_DEBUGGING
+      Serial.print("announcing ");
+      Serial.println(address);
+    #endif  
+    Udp.begin(localUdpPort);
+    Udp.beginPacket( address, 5432);    
+    Udp.write(ANNOUNCE);    
+    Udp.endPacket();
+    Udp.stop();
+    #ifdef SERIAL_DEBUGGING
+    Serial.println("done announcing");
+    #endif   
+}
+
 void restart_server(){
-  if ((mac,DHCPREQ,DHCPRES) == 0){
+  if (Ethernet.begin(mac, DHCPREQ, DHCPRES) == 0){
     #if SERIAL_DEBUGGING > 0
       Serial.println("Failed to  configure Ethernet using DHCP");
     #endif
     Ethernet.begin(mac, default_ip);
+        
   }
   last_restart = millis();
+    
+  announce();
 }
 //-----------------------------------------------------------------------------------------------------------
 void setup(){
@@ -207,7 +231,7 @@ void setup(){
   analogWrite(ON_PIN, 0);
 
   //get settings from EEPROM
-  for (int addr =L1ADDR; addr <= DELAYADDR; addr++)
+  for (int addr=L1ADDR; addr <= DELAYADDR; addr++)
     l[addr] = EEPROM.read(addr);
 
   //Open serial
@@ -221,10 +245,12 @@ void setup(){
   webserver.setDefaultCommand(&ctrlCmd);
   webserver.addCommand("cfg", &cfgCmd);
   restart_server();
+  
   #if SERIAL_DEBUGGING > 0
     Serial.print("IP:");
     Serial.println(Ethernet.localIP());
   #endif
+
   
 }
 
@@ -233,7 +259,17 @@ void processLamps(){
     // пользователь включил лампу?
     if (val > 0) {
       period = l[5]*1000;
-      analogWrite(OUT_PIN, map(l[val], 0, 100, 0, 255));
+      int value = l[val];
+      int pwm_value = 0;
+      if (value < 50)
+         pwm_value = map(value, 0, 50, 0, 50);
+      else
+         pwm_value = map(value, 50,100, 50, 255);
+      #if SERIAL_DEBUGGING > 1
+        Serial.print("Sending ");
+        Serial.println(pwm_value);
+      #endif
+      analogWrite(OUT_PIN, pwm_value);
       digitalWrite(ON_PIN,HIGH);
     }
     lamp_start = cur;
